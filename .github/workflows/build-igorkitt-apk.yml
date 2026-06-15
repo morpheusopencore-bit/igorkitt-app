@@ -2,8 +2,13 @@ name: Build Igor KITT APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v1.0.1)'
+        required: false
+        default: 'v1.0.0'
 
 jobs:
   build:
@@ -16,7 +21,7 @@ jobs:
         with:
           python-version: '3.12'
       
-      - name: Install Buildozer
+      - name: Install Buildozer + dependencies
         run: |
           pip install buildozer cython
           sudo apt update
@@ -24,11 +29,19 @@ jobs:
       
       - name: Build APK
         run: |
-          cd app_kitt
           buildozer android debug
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: igor-kitt-apk
-          path: app_kitt/bin/*.apk
+          name: igor-kitt-apk-${{ github.sha }}
+          path: bin/*.apk
+          retention-days: 30
+      
+      - name: Create Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          files: bin/*.apk
+          generate_release_notes: true
